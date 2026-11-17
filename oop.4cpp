@@ -1,0 +1,194 @@
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+
+class SportGame {
+protected:
+    std::string name;
+    int playersPerTeam;
+    int matchDuration;
+    bool isTeamSport;
+
+public:
+    SportGame()
+        : name("Невідома гра"), playersPerTeam(1), matchDuration(60), isTeamSport(false) {
+        std::cout << "[Конструктор] SportGame за замовчуванням: " << name << "\n";
+    }
+
+    SportGame(const std::string& name, int playersPerTeam, int matchDuration, bool isTeamSport = true)
+        : name(name), playersPerTeam(playersPerTeam), matchDuration(matchDuration), isTeamSport(isTeamSport) {
+        std::cout << "[Конструктор] SportGame з параметрами: " << this->name << "\n";
+    }
+
+    virtual ~SportGame() {
+        std::cout << "[Деструктор] SportGame знищено: " << name << "\n";
+    }
+
+    void setMatchDuration(int minutes) {
+        if (minutes > 0) {
+            matchDuration = minutes;
+        }
+    }
+
+    int getTotalPlayers() const {
+        return isTeamSport ? playersPerTeam * 2 : playersPerTeam;
+    }
+
+    std::string getName() const {
+        return name;
+    }
+
+    virtual void display(std::ostream& out = std::cout) const {
+        out << "Спортивна гра: " << name << "\n"
+            << "  Тип гри: " << (isTeamSport ? "Командна" : "Індивідуальна") << "\n"
+            << "  Гравців у команді: " << playersPerTeam
+            << " (усього на майданчику: " << getTotalPlayers() << ")\n"
+            << "  Тривалість матчу: " << matchDuration << " хв\n";
+    }
+
+    virtual std::string toString() const {
+        std::ostringstream oss;
+        oss << "[" << name << " | " << playersPerTeam << "x" << playersPerTeam
+            << " | " << matchDuration << " хв]";
+        return oss.str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& out, const SportGame& game) {
+        game.display(out);
+        return out;
+    }
+};
+
+class Football : public SportGame {
+private:
+    std::string leagueName;
+    std::string fieldSurface;
+    int homeScore;
+    int awayScore;
+
+public:
+    Football()
+        : SportGame("Футбол", 11, 90, true),
+          leagueName("Товариський матч"), fieldSurface("Натуральний газон"),
+          homeScore(0), awayScore(0) {
+        std::cout << "  -> [Конструктор] Football за замовчуванням (" << leagueName << ")\n";
+    }
+
+    Football(const std::string& name, int playersPerTeam, int matchDuration,
+             const std::string& leagueName, const std::string& fieldSurface,
+             int homeScore = 0, int awayScore = 0)
+        : SportGame(name, playersPerTeam, matchDuration, true),
+          leagueName(leagueName), fieldSurface(fieldSurface),
+          homeScore(homeScore), awayScore(awayScore) {
+        std::cout << "  -> [Конструктор] Football з параметрами (" << this->leagueName << ")\n";
+    }
+
+    ~Football() override {
+        std::cout << "  -> [Деструктор] Football знищено (" << leagueName << ")\n";
+    }
+
+    void recordGoal(bool isHomeTeam) {
+        if (isHomeTeam) {
+            ++homeScore;
+        } else {
+            ++awayScore;
+        }
+    }
+
+    std::string getMatchResult() const {
+        std::ostringstream oss;
+        oss << homeScore << ":" << awayScore << " (";
+        if (homeScore > awayScore) {
+            oss << "перемога господарів";
+        } else if (awayScore > homeScore) {
+            oss << "перемога гостей";
+        } else {
+            oss << "нічия";
+        }
+        oss << ")";
+        return oss.str();
+    }
+
+    void display(std::ostream& out = std::cout) const override {
+        SportGame::display(out);
+        out << "  Турнір/Ліга: " << leagueName << "\n"
+            << "  Покриття поля: " << fieldSurface << "\n"
+            << "  Поточний рахунок: " << getMatchResult() << "\n";
+    }
+
+    std::string toString() const override {
+        std::ostringstream oss;
+        oss << SportGame::toString() << " -> Ліга: " << leagueName
+            << ", Покриття: " << fieldSurface
+            << ", Рахунок: " << homeScore << ":" << awayScore;
+        return oss.str();
+    }
+};
+
+void saveGamesToFile(const std::string& filename, const std::vector<const SportGame*>& games) {
+    std::ofstream outFile(filename, std::ios::out | std::ios::trunc);
+    if (!outFile.is_open()) {
+        std::cerr << "Помилка: не вдалося відкрити файл " << filename << " для запису!\n";
+        return;
+    }
+
+    outFile << "=== ЗВІТ ПРО СПОРТИВНІ ІГРИ ТА ФУТБОЛЬНІ МАТЧІ ===\n\n";
+    for (size_t i = 0; i < games.size(); ++i) {
+        outFile << "Запис #" << (i + 1) << ":\n";
+        outFile << *games[i];
+        outFile << "Короткий рядок (ostringstream): " << games[i]->toString() << "\n";
+        outFile << "--------------------------------------------------\n";
+    }
+
+    outFile.close();
+    std::cout << "\n[Файл] Дані успішно записано у файл '" << filename << "'.\n";
+}
+
+void readGamesFromFile(const std::string& filename) {
+    std::ifstream inFile(filename, std::ios::in);
+    if (!inFile.is_open()) {
+        std::cerr << "Помилка: не вдалося відкрити файл " << filename << " для читання!\n";
+        return;
+    }
+
+    std::cout << "\n=== ВМІСТ ФАЙЛУ '" << filename << "' ===\n";
+    std::string line;
+    while (std::getline(inFile, line)) {
+        std::cout << line << "\n";
+    }
+    inFile.close();
+}
+
+int main() {
+    std::cout << "=== 1. СТВОРЕННЯ ОБ'ЄКТІВ (ПОРЯДОК КОНСТРУКТОРІВ) ===\n";
+
+    Football classicMatch("Футбол (класичний)", 11, 90, "Українська Прем'єр-Ліга", "Натуральний газон", 2, 1);
+    Football futsalMatch("Футзал", 5, 40, "Екстра-ліга України", "Паркет", 3, 3);
+    SportGame basketball("Баскетбол", 5, 40, true);
+
+    std::cout << "\n=== 2. ДЕМОНСТРАЦІЯ УСПАДКОВАНИХ ТА ВЛАСНИХ МЕТОДІВ ===\n";
+    classicMatch.setMatchDuration(94);
+    futsalMatch.recordGoal(true);
+
+    std::cout << "Усього гравців на полі у класичному футболі: "
+              << classicMatch.getTotalPlayers() << "\n";
+    std::cout << "Усього гравців на майданчику у футзалі: "
+              << futsalMatch.getTotalPlayers() << "\n";
+
+    std::vector<const SportGame*> games = { &classicMatch, &futsalMatch, &basketball };
+
+    std::cout << "\n=== 3. ВИВЕДЕННЯ У КОНСОЛЬ ===\n";
+    for (const auto* game : games) {
+        std::cout << *game << "\n";
+    }
+
+    const std::string fileName = "sport_games_report.txt";
+    saveGamesToFile(fileName, games);
+    readGamesFromFile(fileName);
+
+    std::cout << "=== 4. ЗАВЕРШЕННЯ ПРОГРАМИ (ПОРЯДОК ДЕСТРУКТОРІВ) ===\n";
+    return 0;
+}
