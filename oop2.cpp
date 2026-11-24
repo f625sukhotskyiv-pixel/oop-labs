@@ -1,205 +1,156 @@
 #include <iostream>
-#include <string>
+#include <limits>
+#include <clocale>
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 using namespace std;
 
-class ConsolIO
+class List
 {
+    struct Node
+    {
+        int data;
+        Node* next;
+        Node(int d, Node* n) : data(d), next(n) {}
+    };
+    Node* head;
+    int count;
+
+    void copyFrom(const List& other)
+    {
+        Node* tail = nullptr;
+        for (Node* p = other.head; p != nullptr; p = p->next)
+        {
+            Node* n = new Node(p->data, nullptr);
+            if (tail) tail->next = n; else head = n;
+            tail = n;
+            count++;
+        }
+    }
 public:
-    static int GetInt(istream& is)
+    List() : head(nullptr), count(0) {}
+    List(const List& other) : head(nullptr), count(0) { copyFrom(other); }
+    List& operator=(const List& other)
     {
-        int value;
-        while (true)
-        {
-            is >> value;
-            if (is.good() && is.peek() == '\n' && value >= 0)
-            {
-                is.get();
-                return value;
-            }
-            cout << "\n\tНЕКОРЕКТНИЙ ВВІД! Очікується ціле число >= 0. Повторіть: ";
-            is.clear();
-            is.ignore(10000, '\n');
-        }
-    }
-
-    static string GetText(istream& is)
-    {
-        string s;
-        while (true)
-        {
-            getline(is, s);
-            if (s.find_first_not_of(' ') != string::npos)
-                return s;
-            cout << "\n\tНЕКОРЕКТНИЙ ВВІД! Очікується текст. Повторіть: ";
-        }
-    }
-};
-
-class Department
-{
-    string headName;
-    int employees;
-public:
-    Department() : headName("Unknown"), employees(0) {}
-    Department(string head, int count) : headName(head), employees(count) {}
-    ~Department() {}
-
-    string getHeadName() const { return headName; }
-    void setHeadName(const string& value) { headName = value; }
-    int getEmployees() const { return employees; }
-    void setEmployees(int value) { employees = value; }
-
-    void input()
-    {
-        cout << "\t\tПрізвище завідувача кафедри: ";
-        headName = ConsolIO::GetText(cin);
-        cout << "\t\tКількість співробітників: ";
-        employees = ConsolIO::GetInt(cin);
-    }
-
-    void show() const
-    {
-        cout << "\t\tЗавідувач: " << headName
-             << ", співробітників: " << employees << endl;
-    }
-};
-
-class Institute
-{
-    string directorName;   
-    int depCount;
-    Department* departments;
-public:
-    Institute() : directorName("Unknown"), depCount(0), departments(nullptr) {}
-
-    Institute(const Institute& other)
-        : directorName(other.directorName), depCount(other.depCount), departments(nullptr)
-    {
-        if (depCount > 0)
-        {
-            departments = new Department[depCount];
-            for (int i = 0; i < depCount; i++)
-                departments[i] = other.departments[i];
-        }
-    }
-
-    Institute& operator=(const Institute& other)
-    {
-        if (this != &other)
-        {
-            delete[] departments;
-            directorName = other.directorName;
-            depCount = other.depCount;
-            departments = nullptr;
-            if (depCount > 0)
-            {
-                departments = new Department[depCount];
-                for (int i = 0; i < depCount; i++)
-                    departments[i] = other.departments[i];
-            }
-        }
+        if (this != &other) { clear(); copyFrom(other); }
         return *this;
     }
+    ~List() { clear(); }
 
-    ~Institute() { delete[] departments; }
-
-    string getDirectorName() const { return directorName; }
-    void setDirectorName(const string& value) { directorName = value; }
-    int getDepCount() const { return depCount; }
-
-    void input()
+    void addFirst(int value)
     {
-        cout << "\tПрізвище директора інституту: ";
-        directorName = ConsolIO::GetText(cin);
-        cout << "\tКількість кафедр: ";
-        int n = ConsolIO::GetInt(cin);
-
-        delete[] departments;
-        depCount = n;
-        departments = (n > 0) ? new Department[n] : nullptr;
-
-        for (int i = 0; i < depCount; i++)
-        {
-            cout << "\t  Кафедра №" << i + 1 << ":" << endl;
-            departments[i].input();
-        }
+        head = new Node(value, head);
+        count++;
     }
-
+    bool removeFirst(int& value)
+    {
+        if (!head) return false;
+        Node* tmp = head;
+        value = tmp->data;
+        head = head->next;
+        delete tmp;
+        count--;
+        return true;
+    }
+    bool getFirst(int& value) const
+    {
+        if (!head) return false;
+        value = head->data;
+        return true;
+    }
+    bool isEmpty() const { return head == nullptr; }
+    int getCount() const { return count; }
+    void clear()
+    {
+        int tmp;
+        while (removeFirst(tmp)) {}
+    }
     void show() const
     {
-        cout << "\tДиректор: " << directorName
-             << ", кафедр: " << depCount << endl;
-        for (int i = 0; i < depCount; i++)
-            departments[i].show();
-    }
-
-    int totalEmployees() const
-    {
-        int sum = 0;
-        for (int i = 0; i < depCount; i++)
-            sum += departments[i].getEmployees();
-        return sum;
+        if (!head) { cout << "\t[порожньо]" << endl; return; }
+        for (Node* p = head; p != nullptr; p = p->next)
+            cout << "\t" << p->data << endl;
     }
 };
 
-class University
+class Stack
 {
-    string rectorName;
-    int instCount;
-    Institute* institutes;
+    List items;
 public:
-    University() : rectorName("Unknown"), instCount(0), institutes(nullptr) {}
-    ~University() { delete[] institutes; }
-    University(const University&) = delete;
-    University& operator=(const University&) = delete;
+    Stack() { cout << "\t(створено порожній стек)" << endl; }
+    ~Stack() { cout << "\t(стек знищено)" << endl; }
 
-    string getRectorName() const { return rectorName; }
-    void setRectorName(const string& value) { rectorName = value; }
-
-    void input()
-    {
-        cout << "Прізвище ректора: ";
-        rectorName = ConsolIO::GetText(cin);
-        cout << "Кількість інститутів: ";
-        int n = ConsolIO::GetInt(cin);
-
-        delete[] institutes;
-        instCount = n;
-        institutes = (n > 0) ? new Institute[n] : nullptr;
-
-        for (int i = 0; i < instCount; i++)
-        {
-            cout << "\nІнститут №" << i + 1 << ":" << endl;
-            institutes[i].input();
-        }
-    }
-
+    void push(int value) { items.addFirst(value); }
+    bool pop(int& value) { return items.removeFirst(value); }
+    bool peek(int& value) const { return items.getFirst(value); }
+    bool isEmpty() const { return items.isEmpty(); }
+    int size() const { return items.getCount(); }
     void show() const
     {
-        cout << "\n===== УНІВЕРСИТЕТ =====" << endl;
-        cout << "Ректор: " << rectorName << endl;
-        for (int i = 0; i < instCount; i++)
-        {
-            cout << "\nІнститут №" << i + 1 << ":" << endl;
-            institutes[i].show();
-        }
-    }
-
-    int totalEmployees() const
-    {
-        int sum = 0;
-        for (int i = 0; i < instCount; i++)
-            sum += institutes[i].totalEmployees();
-        return sum;
+        cout << "\nВміст стека (вершина зверху), елементів: " << size() << endl;
+        items.show();
     }
 };
+
+int readInt(const char* prompt)
+{
+    int v;
+    while (true)
+    {
+        cout << prompt;
+        if (cin >> v) break;
+        cout << "\tНЕКОРЕКТНИЙ ВВІД! Очікується ціле число." << endl;
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    return v;
+}
 
 int main()
 {
-    University univ;
-    univ.input();
-    univ.show();
-    cout << "\nЗагальна кількість співробітників університету: "
-         << univ.totalEmployees() << endl;
+#ifdef _WIN32
+    SetConsoleCP(65001);
+    SetConsoleOutputCP(65001);
+#else
+    setlocale(LC_ALL, "");
+#endif
+    Stack st;
+    int choice;
+    do
+    {
+        cout << "\n===== МЕНЮ =====" << endl;
+        cout << "1 - Занести елемент у стек" << endl;
+        cout << "2 - Прочитати елемент зі стека (з видаленням)" << endl;
+        cout << "3 - Переглянути вершину стека" << endl;
+        cout << "4 - Вивести вміст стека" << endl;
+        cout << "0 - Вихід" << endl;
+        choice = readInt("Ваш вибір: ");
+
+        int v;
+        switch (choice)
+        {
+        case 1:
+            v = readInt("\tВведіть число: ");
+            st.push(v);
+            break;
+        case 2:
+            if (st.pop(v)) cout << "\tПрочитано: " << v << endl;
+            else cout << "\tСтек порожній!" << endl;
+            break;
+        case 3:
+            if (st.peek(v)) cout << "\tВершина: " << v << endl;
+            else cout << "\tСтек порожній!" << endl;
+            break;
+        case 4:
+            st.show();
+            break;
+        case 0:
+            break;
+        default:
+            cout << "\tНевірний пункт меню!" << endl;
+        }
+    } while (choice != 0);
     return 0;
 }
